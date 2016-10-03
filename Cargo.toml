@@ -1,0 +1,6 @@
+[package]
+name = "jas497-p1"
+version = "0.1.0"
+authors = ["James Starkman <8@case.edu>"]
+
+[dependencies]
