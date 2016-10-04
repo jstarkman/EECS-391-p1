@@ -1,16 +1,13 @@
-#[macro_use] extern crate lazy_static;
-//extern crate regex;
-extern crate rand;
-
 use std::str;
 use std::fmt;
 
-//use regex::Regex;
-use rand::{Rng, ThreadRng};
+use rand;
+use rand::{Rng, StdRng, SeedableRng};
 
 const SIDE_LENGTH: usize = 3;
 const GOAL_STATE: [char; SIDE_LENGTH * SIDE_LENGTH] = ['b','1','2', '3','4','5', '6','7','8'];
 const DIRECTIONS: [&'static str; 4] = ["up", "down", "left", "right"];
+const RNG_SEED: &'static[usize] = &[1,2,3,4];
 
 pub trait Puzzle {
     fn set_state(&mut self, payload: &str);
@@ -26,12 +23,12 @@ pub trait Puzzle {
 pub struct State {
     state: Vec<char>,
     max_nodes: u32,
-    rng: ThreadRng,
+    rng: StdRng,
 }
 
 impl State {
     pub fn new() -> State {
-        State { state: GOAL_STATE.to_vec(), max_nodes: 0, rng: rand::thread_rng(), }
+        State { state: GOAL_STATE.to_vec(), max_nodes: 0, rng: SeedableRng::from_seed(RNG_SEED), }
     }
 }
 
@@ -51,9 +48,11 @@ impl Puzzle for State {
         let mut i = convert_str_to_int(payload);
         let direction = &DIRECTIONS;
         let empty_string = &"";
-        let direction = self.rng.choose(direction).unwrap_or(empty_string);
-        while i > 0 && self.move_blank(direction) {
-            i -= 1;
+        while i > 0 {
+            let direction = self.rng.choose(direction).unwrap_or(empty_string);
+            if self.move_blank(direction) {
+                i -= 1;
+            }
         }
     }
 
@@ -64,6 +63,7 @@ impl Puzzle for State {
         }
     }
 
+    /// Returns true if swap was made, false otherwise.
     fn move_blank(&mut self, payload: &str) -> bool {
         let blank = self.state.iter().position(|&c| c == 'b').unwrap();
         let occupied = match payload.trim() {
@@ -113,9 +113,12 @@ impl fmt::Display for State {
 }
 
 fn convert_str_to_int(s: &str) -> u32 {
-    std::str::from_utf8(s.trim().as_bytes())
+    match str::from_utf8(s.trim().as_bytes())
         .expect("should be UTF-8")
         .parse()
-        .expect("not a number")
+    {
+        Ok(v)  => v,
+        Err(e) => 0,
+    }
 }
 
