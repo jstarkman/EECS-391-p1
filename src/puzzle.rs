@@ -82,7 +82,66 @@ impl Puzzle for State {
     }
 
     fn solve(&self, payload: &str) {
-        //FIXME
+        lazy_static! {
+            static ref TOKENIZER: Regex = Regex::new(r"(\w+)").unwrap();
+        }
+        
+        let tokens = TOKENIZER.captures(payload);
+        if tokens.is_none() { return; }
+        let tokens = tokens.unwrap();
+        let method = tokens.at(1).unwrap_or("");
+        match method {
+            "beam" => {
+                self.solve_beam();
+            },
+            "A-star" => {
+                let heuristic = tokens.at(2).unwrap_or("");
+                match heuristic {
+                    "h1" => self.solve_h1(),
+                    "h2" => self.solve_h2(),
+                    _    => println!("Please specify a heuristic.");
+                };
+            },
+            _ => println!("Please specify a method."),
+        };
+    }
+
+    fn h1(one: Vec<char>, other: Vec<char>) -> u32 {
+        let mut out: u32 = 0;
+        for it in one.iter().zip(other.iter()) {
+            let (ai, bi) = it;
+            out += (ai != bi) as u32;
+        }
+        out
+    }
+    
+    /// always against the goal
+    /// might be useful: `let goal_state = GOAL_STATE.to_vec();`
+    fn h2(goal_state: Vec<char>, other: Vec<char>) -> u32 {
+        let mut out: u32 = 0;
+        for (other_pos, other_c) in other.iter().enumerate() {
+            let other_pos = other_pos as i32;
+            let goal_pos = goal_state.iter().position(|&c| c == *other_c).unwrap() as i32;
+            let goal_x = goal_pos % SIDE_LENGTH as i32;
+            let goal_y = goal_pos / SIDE_LENGTH as i32;
+            let other_x = other_pos % SIDE_LENGTH as i32;
+            let other_y = other_pos / SIDE_LENGTH as i32;
+            let l1_norm = ((other_x - goal_x).abs() + (other_y - goal_y).abs()) as u32;
+            out += l1_norm;
+        }
+        out
+    }
+
+    fn solve_beam(&self) {
+
+    }
+
+    fn solve_h1(&self) {
+
+    }
+
+    fn solve_h2(&self) {
+
     }
 
     fn set_max_nodes(&mut self, payload: &str) {
