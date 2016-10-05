@@ -30,9 +30,9 @@ fn execute_statement(state: &mut State, cmd: &str) {
     let payload = parts.at(2).unwrap_or("");
 
     match opcode {
-        "setState"       => state.set_state(payload),
-        "randomizeState" => state.randomize_state(payload),
-        "printState"     => state.print_state(payload),
+        "s" | "setState"       => state.set_state(payload),
+        "r" | "randomizeState" => state.randomize_state(payload),
+        "p" | "printState"     => state.print_state(payload),
         "move"           => if !state.move_blank(payload) { println!("Illegal move"); },
         "solve"          => state.solve(payload), // more splitting inside
         "maxNodes"       => state.set_max_nodes(payload),
