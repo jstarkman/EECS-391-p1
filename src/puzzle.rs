@@ -73,12 +73,13 @@ impl State {
                 // }
                 history.insert(node.clone());
             }
-
+            beam.clear(); // prepare for influx
             // Now the next layer is full.  Time to find the top $width.
             let mut next_layer = Vec::from_iter(next_layer.into_iter());
-            next_layer.sort();
-            beam.clear();
+            next_layer.sort(); // backwards due to accomodating for min heap for A*
+            next_layer.reverse(); // not backwards any more
             beam.extend(next_layer.into_iter().take(width));
+            //println!("{:?}", beam);
         }
     }
 
