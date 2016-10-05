@@ -1,14 +1,16 @@
-use std::borrow::Borrow;
+//use std::borrow::Borrow;
+use std::cmp;
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashSet};
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use std::ops::Deref;
+use std::iter::{FromIterator, IntoIterator};
+//use std::ops::Deref;
 use std::rc::Rc;
 use std::str;
 use std::sync::Mutex;
 
-use rand;
+//use rand;
 use rand::{Rng, StdRng, SeedableRng};
 
 use regex::Regex;
@@ -44,9 +46,40 @@ impl State {
         State { state: GOAL_STATE.to_vec(), max_nodes: 0 }
     }
 
-    fn solve_beam(&self) {
+    /// Does beam search (expand entire buffer, top $width costs, iterate) to
+    /// find a valid moveset.
+    fn solve_beam(&self, width: usize) {
+        let width = cmp::max(1, width);
+        let mut beam: Vec<Node>        = Vec::with_capacity(width);
+        let mut history: HashSet<Node> = HashSet::with_capacity(self.max_nodes);
         
-        
+        beam.push(Node { state: self.clone(), cost: 0, parent: None, moves: 0, dir: 4 });
+        loop {
+            let mut next_layer: HashSet<Node> = HashSet::with_capacity(24); // 4*2 + 4*3 + 1*4
+            for node in &beam {
+                if node.state.state == GOAL_STATE.to_vec() {
+                    println!("Goal!  Moves: {}", node.moves);
+                    node.disp();
+                    return;
+                }
+                for child in node.expand(&h2) {
+                    //println!("child = {:#?}", child);
+                    if !history.contains(&child) {
+                        next_layer.insert(child);
+                    }
+                }
+                // if self.max_nodes != 0 && qty_nodes >= self.max_nodes {
+                //     continue;
+                // }
+                history.insert(node.clone());
+            }
+
+            // Now the next layer is full.  Time to find the top $width.
+            let mut next_layer = Vec::from_iter(next_layer.into_iter());
+            next_layer.sort();
+            beam.clear();
+            beam.extend(next_layer.into_iter().take(width));
+        }
     }
 
     /// Does A* with heuristic to find a valid moveset.  Impl: UCS with modified
@@ -55,11 +88,15 @@ impl State {
         //note: sum of sizes of these two should be max_nodes, not each one
         let mut pq      = BinaryHeap::with_capacity(self.max_nodes); // "frontier"
         let mut history = HashSet::with_capacity(self.max_nodes);    // "explored"
+        let mut qty_nodes = 0;
 
         let node = Node { state: self.clone(), cost: 0, parent: None, moves: 0, dir: 4 };
         pq.push(node);
+        qty_nodes += 1;
         loop {
-            let node = match pq.pop() {
+            let head = pq.pop();
+            qty_nodes -= 1;
+            let node = match head {
                 Some(v) => v,
                 None    => { println!("Failed to find a solution."); return; }
             };
@@ -69,7 +106,11 @@ impl State {
                 return;
             }
             let future: Vec<Node> = node.expand(heuristic);
+            if self.max_nodes != 0 && qty_nodes >= self.max_nodes {
+                continue;
+            }
             history.insert(node); // goodbye, node
+            qty_nodes += 1;
             for child in future.iter() {
                 let child = child.to_owned();
                 if history.contains(&child) {
@@ -77,7 +118,11 @@ impl State {
                         history.replace(child); // update record
                     }
                 } else {
+                    if self.max_nodes != 0 && qty_nodes >= self.max_nodes {
+                        continue;
+                    }
                     pq.push(child);
+                    qty_nodes += 1;
                 }
             }
         }
@@ -136,7 +181,7 @@ impl Puzzle for State {
 
     fn solve(&self, payload: &str) {
         lazy_static! {
-            static ref TOKENIZER: Regex = Regex::new(r"([\w-]+)( h[12])?").unwrap();
+            static ref TOKENIZER: Regex = Regex::new(r"([\w-]+) (h?\d+)").unwrap();
         }
         
         let tokens = TOKENIZER.captures(payload);
@@ -145,7 +190,9 @@ impl Puzzle for State {
         let method = tokens.at(1).unwrap_or("");
         match method {
             "beam" => {
-                self.solve_beam();
+                let width = tokens.at(2).unwrap_or("").trim();
+                let width = convert_str_to_int(width) as usize;
+                self.solve_beam(width);
             },
             "A-star" | "a" => {
                 let heuristic = tokens.at(2).unwrap_or("").trim();
@@ -236,7 +283,7 @@ impl Hash for Node {
 }
 
 impl /*fmt::Display for*/ Node {
-//     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    //     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
     fn disp(&self) {
         let p = self.parent.as_ref(); //.map(|x| x.borrow());
         match p {
@@ -268,8 +315,8 @@ fn convert_str_to_int(s: &str) -> u32 {
         .expect("should be UTF-8")
         .parse()
     {
-        Ok(v)  => v,
-        Err(e) => 0,
+        Ok(v) => v,
+        _     => 0,
     }
 }
 
