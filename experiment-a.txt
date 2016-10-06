@@ -1,0 +1,33 @@
+r 1234
+p
+
+maxNodes 10
+solve A-star h1
+solve A-star h2
+solve beam 30
+
+maxNodes 100
+solve A-star h1
+solve A-star h2
+solve beam 30
+
+maxNodes 1000
+solve A-star h1
+solve A-star h2
+solve beam 30
+
+maxNodes 10000
+solve A-star h1
+solve A-star h2
+solve beam 30
+
+maxNodes 100000
+solve A-star h1
+solve A-star h2
+solve beam 30
+
+maxNodes 1000000
+solve A-star h1
+solve A-star h2
+solve beam 30
+

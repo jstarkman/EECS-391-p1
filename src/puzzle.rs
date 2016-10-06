@@ -9,6 +9,7 @@ use std::iter::{FromIterator, IntoIterator};
 use std::rc::Rc;
 use std::str;
 use std::sync::Mutex;
+use std::usize;
 
 //use rand;
 use rand::{Rng, StdRng, SeedableRng};
@@ -52,25 +53,30 @@ impl State {
         let width = cmp::max(1, width);
         let mut beam: Vec<Node>        = Vec::with_capacity(width);
         let mut history: HashSet<Node> = HashSet::with_capacity(self.max_nodes);
+        let mut node_budget: usize = if self.max_nodes == 0 { usize::MAX } else { self.max_nodes };
         
         beam.push(Node { state: self.clone(), cost: 0, parent: None, moves: 0, dir: 4 });
+        node_budget -= 1;
         loop {
             let mut next_layer: HashSet<Node> = HashSet::with_capacity(24); // 4*2 + 4*3 + 1*4
             for node in &beam {
                 if node.state.state == GOAL_STATE.to_vec() {
-                    println!("Goal!  Moves: {}", node.moves);
+                    println!("Goal!  Moves: {}
+Directions to move the blank tile (invert for physical tile):", node.moves);
                     node.disp();
                     return;
                 }
                 for child in node.expand(&h2) {
+                    node_budget -= 1; // this is where we spend memory on another node
+                    if node_budget == 0 { // since u32
+                        println!("Ran out of nodes.  Try increasing maxNodes and running again.");
+                        return;
+                    }
                     //println!("child = {:#?}", child);
                     if !history.contains(&child) {
                         next_layer.insert(child);
                     }
                 }
-                // if self.max_nodes != 0 && qty_nodes >= self.max_nodes {
-                //     continue;
-                // }
                 history.insert(node.clone());
             }
             beam.clear(); // prepare for influx
@@ -102,7 +108,8 @@ impl State {
                 None    => { println!("Failed to find a solution."); return; }
             };
             if node.state.state == GOAL_STATE.to_vec() {
-                println!("Goal!  Moves: {}", node.moves);
+                println!("Goal!  Moves: {}
+Directions to move the blank tile (invert for physical tile):", node.moves);
                 node.disp();
                 return;
             }
@@ -335,6 +342,7 @@ fn h1(one: &Vec<char>, other: &Vec<char>) -> u32 {
 fn h2(goal_state: &Vec<char>, other: &Vec<char>) -> u32 {
     let mut out: u32 = 0;
     for (other_pos, other_c) in other.iter().enumerate() {
+        if *other_c == 'b' { continue; }
         let other_pos = other_pos as i32;
         let goal_pos = goal_state.iter().position(|&c| c == *other_c).unwrap() as i32;
         let goal_x = goal_pos % SIDE_LENGTH as i32;

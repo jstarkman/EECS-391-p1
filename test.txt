@@ -1,0 +1,8 @@
+r 9
+p
+solve a h1
+solve a h2
+solve beam 30
+solve beam 3
+solve beam 1
+

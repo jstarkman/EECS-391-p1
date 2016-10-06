@@ -8,4 +8,5 @@ authors = ["James Starkman <8@case.edu>"]
 lazy_static = "0.1.*"
 regex = "0.1.77"
 rand = "0.3.14"
+time = "*"
 
